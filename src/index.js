@@ -1,12 +1,17 @@
 require("dotenv").config()
 const express =  require("express");
-const con = require("./config")
+const con = require("../config")
 const bodyParser = require('body-parser');
 const jwt = require("jsonwebtoken");
+const serverless = require("serverless-http");
+const { json } = require("body-parser");
+
 const app = express();
+const router = express.Router();
 var secret = "secret";
 app.use(bodyParser.urlencoded({ extended: false }));
 app.use(bodyParser.json());
+
 app.get("/", function(req, resp){
     con.query("SELECT * from user_data", function(err, result){
         if(err){
@@ -67,19 +72,20 @@ app.post("/login", function(req, resp){
     req.body.token || req.query.token || req.headers["authorization"]; 
    
   if(token == null){
-    resp.status(409).send({
+    resp.status(403).send({
         "code": 9,
         "message": "token needed"
     })
   }else{
 
     var ten = token.split(" ")[1];
-    con.query("SELECT * from user_credentials WHERE token =?", [ten, req.body.email, req.body.password], function(err, result){
+    var data1 = jwt.verify(ten, secret);
+    con.query("SELECT * from user_credentials WHERE email =?", [data1.email, data1.password], function(err, result){
         if(err){
             resp.send(err)
         }
         else{
-            resp.json({
+            resp.send({
                 "code": 0,
                 "message": "Login Success",
                 "result": result
@@ -93,9 +99,14 @@ app.post("/login", function(req, resp){
 
 
 
-   
+// app.use("/.netlify/functions/index",router);   
 
-
+// module.exports = {
+//     output: {
+//         hashFunction: "sha256"
+//     }
+// };
+// module.exports.handler = serverless(app);
 
 app.listen(process.env.APP_PORT, function(){
     console.log("listening on port 5000");
